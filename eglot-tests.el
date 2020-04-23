@@ -556,27 +556,33 @@ pyls prefers autopep over yafp, despite its README stating the contrary."
   ;; newlines before the region we asked to reformat.  I actually
   ;; think Travis' behaviour is more sensible, but I don't know how to
   ;; reproduce it locally.  Must be some Python version thing.
-  ;; Beware, this test is brittle if ~/.config/pycodestyle exists, or
-  ;; default autopep rules change, which has happened.
+  ;; Beware, default autopep rules can change over time, which may
+  ;; affect this test.
   (skip-unless (null (getenv "TRAVIS_TESTING")))
   (skip-unless (and (executable-find "pyls")
                     (executable-find "autopep8")))
   (eglot--with-fixture
       `(("project" . (("something.py" . "def a():pass\n\ndef b():pass")))
         ,@eglot--tests--python-mode-bindings)
-    (with-current-buffer
-        (eglot--find-file-noselect "project/something.py")
-      (should (eglot--tests-connect))
-      ;; Try to format just the second line
-      (search-forward "b():pa")
-      (eglot-format (point-at-bol) (point-at-eol))
-      (should (looking-at "ss"))
-      (should
-       (string= (buffer-string) "def a():pass\n\n\ndef b(): pass\n"))
-      ;; now format the whole buffer
-      (eglot-format-buffer)
-      (should
-       (string= (buffer-string) "def a(): pass\n\n\ndef b(): pass\n")))))
+    (let ((old-xgd-config-home (getenv "XDG_CONFIG_HOME")))
+      (unwind-protect
+          (progn
+            ;; Prevent ~/.config/pycodestyle from having any effect.
+            (setenv "XDG_CONFIG_HOME" "/dev/null")
+            (with-current-buffer
+                (eglot--find-file-noselect "project/something.py")
+              (should (eglot--tests-connect))
+              ;; Try to format just the second line
+              (search-forward "b():pa")
+              (eglot-format (point-at-bol) (point-at-eol))
+              (should (looking-at "ss"))
+              (should
+               (string= (buffer-string) "def a():pass\n\n\ndef b(): pass\n"))
+              ;; now format the whole buffer
+              (eglot-format-buffer)
+              (should
+               (string= (buffer-string) "def a(): pass\n\n\ndef b(): pass\n"))))
+        (setenv "XDG_CONFIG_HOME" old-xgd-config-home)))))
 
 (ert-deftest python-yapf-formatting ()
   "Test formatting in the pyls python LSP"
