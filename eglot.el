@@ -704,7 +704,9 @@ be guessed."
                          (prog1 (car guess) (setq guess (cdr guess))))
                     'eglot-lsp-server))
          (program (and (listp guess)
-                       (stringp (car guess)) (stringp (cadr guess)) (car guess)))
+                       (stringp (car guess))
+                       (or (null (cdr guess)) (stringp (cadr guess)))
+                       (car guess)))
          (base-prompt
           (and interactive
                "Enter program to execute (or <host>:<port>): "))
